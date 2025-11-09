@@ -1,154 +1,91 @@
-import React, { useEffect, useState } from "react";
-import PlantCard from "./PlantCard";
-import PlantForm from "./PlantForm";
+import React, { useState, useEffect } from "react";
+import NewPlantForm from "./NewPlantForm";
+import PlantList from "./PlantList";
 import Search from "./Search";
 
-const API = "http://localhost:6001/plants";
-
-export default function PlantPage() {
+function PlantPage() {
   const [plants, setPlants] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  // fetch plants on mount
+  // Fetch plants when component mounts
   useEffect(() => {
-    setLoading(true);
-    fetch(API)
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to fetch plants");
-        return r.json();
-      })
-      .then((data) => {
-        // normalize - ensure soldOut property exists locally
-        const normalized = data.map(p => ({ ...p, soldOut: p.soldOut || false }));
-        setPlants(normalized);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+    fetch("http://localhost:6001/plants")
+      .then((response) => response.json())
+      .then((data) => setPlants(data))
+      .catch((error) => console.error("Error fetching plants:", error));
   }, []);
 
-  function handleAddPlant({ name, image, price }) {
-    // POST new plant
-    const newPlant = { name, image, price: parseFloat(price) };
-
-    fetch(API, {
+  // Add new plant
+  function handleAddPlant(newPlant) {
+    fetch("http://localhost:6001/plants", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "Application/JSON",
+      },
       body: JSON.stringify(newPlant),
     })
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to add plant");
-        return r.json();
-      })
-      .then((created) => {
-        // ensure soldOut property for UI
-        setPlants((prev) => [...prev, { ...created, soldOut: created.soldOut || false }]);
-      })
-      .catch((err) => {
-        alert("Error adding plant: " + err.message);
-      });
+      .then((response) => response.json())
+      .then((data) => setPlants([...plants, data]))
+      .catch((error) => console.error("Error adding plant:", error));
   }
 
+  // Mark plant as sold out
   function handleToggleSoldOut(id) {
-    setPlants((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, soldOut: !p.soldOut } : p))
+    setPlants(
+      plants.map((plant) =>
+        plant.id === id ? { ...plant, soldOut: !plant.soldOut } : plant
+      )
     );
-
-    // NOTE:
-    // Core deliverables don't require persisting soldOut.
-    // If you want to persist soldOut then uncomment and ensure your backend accepts a PATCH for soldOut:
-    /*
-    const plant = plants.find(p => p.id === id);
-    fetch(`${API}/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ soldOut: !plant.soldOut })
-    }).then(...)
-    */
   }
 
-  // Optional advanced: delete plant (persisted)
-  function handleDeletePlant(id) {
-    // optimistic UI:
-    // setPlants(prev => prev.filter(p => p.id !== id));
-
-    // Actually delete on server:
-    fetch(`${API}/${id}`, { method: "DELETE" })
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to delete");
-        // remove locally
-        setPlants((prev) => prev.filter((p) => p.id !== id));
-      })
-      .catch((err) => {
-        alert("Delete failed: " + err.message);
-      });
-  }
-
-  // Optional advanced: update price (persisted)
+  // Update plant price (Advanced)
   function handleUpdatePrice(id, newPrice) {
-    const parsed = parseFloat(newPrice);
-    if (Number.isNaN(parsed)) {
-      alert("Enter a valid number for price");
-      return;
-    }
-
-    fetch(`${API}/${id}`, {
+    fetch(`http://localhost:6001/plants/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ price: parsed }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ price: newPrice }),
     })
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to update price");
-        return r.json();
+      .then((response) => response.json())
+      .then((updatedPlant) => {
+        setPlants(
+          plants.map((plant) =>
+            plant.id === id ? updatedPlant : plant
+          )
+        );
       })
-      .then((updated) => {
-        setPlants((prev) => prev.map((p) => (p.id === id ? { ...p, price: updated.price } : p)));
-      })
-      .catch((err) => {
-        alert("Update price failed: " + err.message);
-      });
+      .catch((error) => console.error("Error updating price:", error));
   }
 
-  const filteredPlants = plants.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  // Delete plant (Advanced)
+  function handleDeletePlant(id) {
+    fetch(`http://localhost:6001/plants/${id}`, {
+      method: "DELETE",
+    })
+      .then(() => {
+        setPlants(plants.filter((plant) => plant.id !== id));
+      })
+      .catch((error) => console.error("Error deleting plant:", error));
+  }
+
+  // Filter plants based on search term
+  const displayedPlants = plants.filter((plant) =>
+    plant.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div>
-      <div className="controls">
-        <Search value={searchTerm} onChange={setSearchTerm} placeholder="Search plants by name..." />
-      </div>
-
-      <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 280 }} className="add-form">
-          <h3>Add a New Plant</h3>
-          <PlantForm onAddPlant={handleAddPlant} />
-        </div>
-
-        <div style={{ flex: 2, minWidth: 280 }}>
-          <h3>Plants</h3>
-          {loading && <p>Loading plants...</p>}
-          {error && <p style={{ color: "red" }}>{error}</p>}
-
-          {!loading && filteredPlants.length === 0 && <p>No plants found.</p>}
-
-          <div className="plant-grid" style={{ marginTop: 8 }}>
-            {filteredPlants.map((plant) => (
-              <PlantCard
-                key={plant.id}
-                plant={plant}
-                onToggleSoldOut={() => handleToggleSoldOut(plant.id)}
-                onDelete={() => handleDeletePlant(plant.id)} // optional, un-tested if your backend supports delete
-                onUpdatePrice={(newPrice) => handleUpdatePrice(plant.id, newPrice)} // optional advanced
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    <main>
+      <NewPlantForm onAddPlant={handleAddPlant} />
+      <Search searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+      <PlantList
+        plants={displayedPlants}
+        onToggleSoldOut={handleToggleSoldOut}
+        onUpdatePrice={handleUpdatePrice}
+        onDeletePlant={handleDeletePlant}
+      />
+    </main>
   );
 }
+
+ export default PlantPage;

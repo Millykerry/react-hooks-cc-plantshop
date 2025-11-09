@@ -1,18 +1,14 @@
-import React from "react";
-import PlantPage from "./PlantPage"; // ✅ correct path
+import React, { useState, useEffect } from "react";
+import Header from "./Header";
+import PlantPage from "./PlantPage";
 
 function App() {
   return (
-    <div className="container">
-      <header>
-        <h1>Plantsy Admin</h1>
-        <small>Manage plants — add, mark sold out, search</small>
-      </header>
-
+    <div className="app">
+      <Header />
       <PlantPage />
     </div>
   );
 }
 
-export default App;
-
+ export default App;

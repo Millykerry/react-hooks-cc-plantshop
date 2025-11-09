@@ -1,60 +1,66 @@
 import React, { useState } from "react";
 
-export default function PlantCard({ plant, onToggleSoldOut, onDelete, onUpdatePrice }) {
-  const [editingPrice, setEditingPrice] = useState(false);
-  const [priceValue, setPriceValue] = useState(plant.price);
+function PlantCard({ plant, onToggleSoldOut, onUpdatePrice, onDeletePlant }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [newPrice, setNewPrice] = useState(plant.price);
 
-  function submitPriceUpdate(e) {
+  function handlePriceSubmit(e) {
     e.preventDefault();
-    onUpdatePrice && onUpdatePrice(priceValue);
-    setEditingPrice(false);
+    onUpdatePrice(plant.id, parseFloat(newPrice));
+    setIsEditing(false);
   }
 
   return (
-    <div className={`plant-card ${plant.soldOut ? "sold-out" : ""}`} style={{ position: "relative" }}>
-      {plant.soldOut && <div className="sold-badge">SOLD</div>}
+    <li className="card" data-testid="plant-item">
       <img src={plant.image} alt={plant.name} />
-      <div className="name">{plant.name}</div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div className="price">${Number(plant.price).toFixed(2)}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={onToggleSoldOut}>
-            {plant.soldOut ? "Mark Available" : "Mark Sold Out"}
+      <h4>{plant.name}</h4>
+      
+      <p className="price">Price: {plant.price}</p>
+      
+      {isEditing && (
+        <form onSubmit={handlePriceSubmit} className="price-edit-form">
+          <input
+            type="number"
+            step="0.01"
+            value={newPrice}
+            onChange={(e) => setNewPrice(e.target.value)}
+            className="price-input"
+          />
+          <button type="submit" className="update-btn">Update</button>
+          <button 
+            type="button" 
+            onClick={() => setIsEditing(false)}
+            className="cancel-btn"
+          >
+            Cancel
           </button>
-
-          {/* Optional delete button (advanced) */}
-          {onDelete && (
-            <button onClick={() => {
-              if (window.confirm(`Delete ${plant.name}?`)) onDelete();
-            }}>
-              Delete
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Optional price editing (advanced) */}
-      {onUpdatePrice && (
-        <div style={{ marginTop: 8 }}>
-          {!editingPrice ? (
-            <button onClick={() => { setEditingPrice(true); setPriceValue(plant.price); }}>
-              Edit Price
-            </button>
-          ) : (
-            <form onSubmit={submitPriceUpdate} style={{ display: "flex", gap: 8 }}>
-              <input
-                type="number"
-                step="0.01"
-                value={priceValue}
-                onChange={(e) => setPriceValue(e.target.value)}
-              />
-              <button type="submit">Save</button>
-              <button type="button" onClick={() => setEditingPrice(false)}>Cancel</button>
-            </form>
-          )}
-        </div>
+        </form>
       )}
-    </div>
+      
+      {!isEditing && (
+        <button 
+          onClick={() => setIsEditing(true)}
+          className="edit-price-btn"
+        >
+          Edit Price
+        </button>
+      )}
+      
+      <button
+        className={plant.soldOut ? "" : "primary"}
+        onClick={() => onToggleSoldOut(plant.id)}
+      >
+        {plant.soldOut ? "Out of Stock" : "In Stock"}
+      </button>
+      
+      <button 
+        onClick={() => onDeletePlant(plant.id)}
+        className="delete-btn"
+      >
+        Delete
+      </button>
+    </li>
   );
 }
+
+ export default PlantCard;
